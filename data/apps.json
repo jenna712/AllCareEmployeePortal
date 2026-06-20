@@ -1,0 +1,10 @@
+[
+  {"title":"Clinicient","url":"https://insight.clinicient.com","icon":"assets/apps/Clinicient.png","category":"Apps","keywords":["clinicient","patient records","billing"]},
+  {"title":"BambooHR","url":"https://allcaretherapygt.bamboohr.com/login.php","icon":"assets/apps/bamboo.png","category":"Apps","keywords":["hr","payroll","time off"]},
+  {"title":"Weave","url":"https://auth.getweave.com/?username=","icon":"assets/apps/Weave.png","category":"Apps","keywords":["communications","messaging","phone"]},
+  {"title":"Freed","url":"https://secure.getfreed.ai","icon":"assets/apps/Freed.png","category":"Apps","keywords":["scheduling","practice management","billing"]},
+  {"title":"HEP2Go","url":"https://hep2go.com","icon":"assets/apps/HEP2Go.png","category":"Apps","keywords":["home exercise","patient education","home program"]},
+  {"title":"Google Drive","url":"https://drive.google.com","icon":"assets/apps/Google Drive.png","category":"Apps","keywords":["files","documents","drive"]},
+  {"title":"Google Calendar","url":"https://calendar.google.com","icon":"assets/apps/Google Calendar.png","category":"Apps","keywords":["calendar","schedule","appointments"]},
+  {"title":"Gmail","url":"https://mail.google.com","icon":"assets/apps/Google Mail.png","category":"Apps","keywords":["email","communication","inbox"]}
+]
