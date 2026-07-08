@@ -207,6 +207,7 @@ function handleLogin(user) {
 
   storeAuthUser(user);
   showPortalContent();
+  updateSignedInEmail();
 }
 
 /**
@@ -288,6 +289,7 @@ function showPortalContent() {
   if (appContent) {
     appContent.style.display = 'flex';
   }
+  updateSignedInEmail();
 }
 
 /**
@@ -297,6 +299,24 @@ function hidePortalContent() {
   const appContent = document.querySelector('.app');
   if (appContent) {
     appContent.style.display = 'none';
+  }
+}
+
+/**
+ * Update signed-in email display in the sidebar
+ */
+function updateSignedInEmail() {
+  const emailEl = document.getElementById('signedInEmail');
+  if (!emailEl) return;
+
+  const user = netlifyIdentity.currentUser();
+  const email = getUserEmail(user) || 'Unknown user';
+  emailEl.textContent = `Signed in as: ${email}`;
+
+  const signOutBtn = document.getElementById('sidebarSignOut');
+  if (signOutBtn) {
+    signOutBtn.removeEventListener('click', logoutUser);
+    signOutBtn.addEventListener('click', logoutUser);
   }
 }
 
