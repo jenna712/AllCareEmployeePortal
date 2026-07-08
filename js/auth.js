@@ -34,30 +34,69 @@ function initNetlifyIdentity() {
  */
 function checkAuthStatus() {
   const user = netlifyIdentity.currentUser();
+  console.log('Checking auth status - Current user:', user);
 
   if (!user) {
     // User is not logged in - show Netlify Identity modal
+    console.log('No user found, showing login modal');
     showLoginModal();
     return false;
   }
 
+  // Extract and validate user email
+  const email = getUserEmail(user);
+  console.log('User email:', email);
+  
+  if (!email) {
+    console.error('No email found in user object');
+    handleUnauthorizedUser(user);
+    return false;
+  }
+
   // Validate user email domain
-  if (!isValidUserEmail(user.email)) {
+  if (!isValidUserEmail(user)) {
+    console.warn(`Unauthorized email domain: ${email}`);
     handleUnauthorizedUser(user);
     return false;
   }
 
   // User is authenticated and authorized
+  console.log(`Authorized user: ${email}`);
   showPortalContent();
   storeAuthUser(user);
   return true;
 }
 
 /**
+ * Extract email from Netlify Identity user object
+ */
+function getUserEmail(user) {
+  if (!user) return null;
+  
+  // Try direct email property first
+  if (user.email) {
+    return user.email;
+  }
+  
+  // Fallback to user_metadata.email
+  if (user.user_metadata && user.user_metadata.email) {
+    return user.user_metadata.email;
+  }
+  
+  return null;
+}
+
+/**
  * Validate that user email ends with allowed domain
  */
-function isValidUserEmail(email) {
-  if (!email) return false;
+function isValidUserEmail(user) {
+  const email = getUserEmail(user);
+  
+  if (!email) {
+    console.warn('No email found in user object:', user);
+    return false;
+  }
+  
   return email.toLowerCase().endsWith(AUTH_CONFIG.allowedEmailDomain);
 }
 
@@ -65,7 +104,18 @@ function isValidUserEmail(email) {
  * Handle successful login
  */
 function handleLogin(user) {
-  if (!isValidUserEmail(user.email)) {
+  console.log('Login event - User object:', user);
+  
+  const email = getUserEmail(user);
+  console.log('Extracted email:', email);
+  
+  if (!email) {
+    console.error('No email found in user object');
+    handleUnauthorizedUser(user);
+    return;
+  }
+  
+  if (!isValidUserEmail(user)) {
     handleUnauthorizedUser(user);
     return;
   }
@@ -78,6 +128,7 @@ function handleLogin(user) {
  * Handle logout
  */
 function handleLogout() {
+  console.log('Logout event');
   clearAuthUser();
   showLoginModal();
 }
@@ -86,11 +137,12 @@ function handleLogout() {
  * Handle unauthorized user (wrong email domain)
  */
 function handleUnauthorizedUser(user) {
-  console.warn(`Unauthorized user: ${user.email}`);
+  const email = getUserEmail(user) || 'unknown';
+  console.warn(`Unauthorized user: ${email}`);
   netlifyIdentity.logout();
   
   // Show error message
-  const errorMsg = `Access Denied: Your email (${user.email}) is not authorized. Only @allcaretherapygt.com emails can access this portal.`;
+  const errorMsg = `Access Denied: Your email (${email}) is not authorized. Only @allcaretherapygt.com emails can access this portal.`;
   showErrorDialog(errorMsg);
 }
 
@@ -106,12 +158,14 @@ function handleAuthError(err) {
  */
 function storeAuthUser(user) {
   try {
+    const email = getUserEmail(user);
     localStorage.setItem(AUTH_CONFIG.authStorageKey, JSON.stringify({
       id: user.id,
-      email: user.email,
-      name: user.user_metadata?.full_name || user.email,
+      email: email,
+      name: user.user_metadata?.full_name || email,
       timestamp: Date.now()
     }));
+    console.log('User stored in localStorage:', email);
   } catch (err) {
     console.error('Failed to store user:', err);
   }
@@ -165,9 +219,12 @@ function hidePortalContent() {
  * Show Netlify Identity login modal
  */
 function showLoginModal() {
+  console.log('Showing login modal');
   hidePortalContent();
   if (typeof netlifyIdentity !== 'undefined') {
     netlifyIdentity.open('login');
+  } else {
+    console.error('Netlify Identity widget not loaded');
   }
 }
 
