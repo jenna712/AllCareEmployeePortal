@@ -8,7 +8,7 @@ function initUI(){
       if(e.key === 'Enter'){
         e.preventDefault();
         const q = search.value.trim();
-        if(q) location.href = 'resources.html?q=' + encodeURIComponent(q);
+        if(q) window.open('https://drive.google.com/drive/search?q=' + encodeURIComponent(q), '_blank');
       }
     });
   }
