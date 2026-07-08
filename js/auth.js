@@ -48,13 +48,22 @@ function checkAuthStatus() {
   console.log('User email:', email);
   
   if (!email) {
-    console.error('No email found in user object');
-    handleUnauthorizedUser(user);
+    console.error('Unable to retrieve email from user object');
+    showErrorDialog('Unable to verify email. Please refresh or sign in again.');
     return false;
   }
 
   // Validate user email domain
-  if (!isValidUserEmail(user)) {
+  const isValid = isValidUserEmail(user);
+  
+  if (isValid === null) {
+    // Unable to verify
+    console.error('Unable to verify email domain');
+    showErrorDialog('Unable to verify email. Please refresh or sign in again.');
+    return false;
+  }
+  
+  if (!isValid) {
     console.warn(`Unauthorized email domain: ${email}`);
     handleUnauthorizedUser(user);
     return false;
@@ -68,21 +77,82 @@ function checkAuthStatus() {
 }
 
 /**
+ * Decode JWT payload (base64 decode the middle section)
+ */
+function decodeJWT(token) {
+  try {
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    // Decode the payload (second part)
+    const payload = parts[1];
+    const decoded = atob(payload);
+    return JSON.parse(decoded);
+  } catch (err) {
+    console.error('Failed to decode JWT:', err);
+    return null;
+  }
+}
+
+/**
  * Extract email from Netlify Identity user object
+ * Checks multiple possible locations for email data
  */
 function getUserEmail(user) {
-  if (!user) return null;
+  if (!user) {
+    console.warn('getUserEmail: user object is null/undefined');
+    return null;
+  }
+
+  console.log('FULL NETLIFY USER:', user);
   
   // Try direct email property first
   if (user.email) {
+    console.log('Email found in user.email:', user.email);
     return user.email;
   }
   
-  // Fallback to user_metadata.email
+  // Try user_metadata.email
   if (user.user_metadata && user.user_metadata.email) {
+    console.log('Email found in user.user_metadata.email:', user.user_metadata.email);
     return user.user_metadata.email;
   }
   
+  // Try app_metadata.email
+  if (user.app_metadata && user.app_metadata.email) {
+    console.log('Email found in user.app_metadata.email:', user.app_metadata.email);
+    return user.app_metadata.email;
+  }
+  
+  // Try full_name from user_metadata (sometimes contains email)
+  if (user.user_metadata && user.user_metadata.full_name) {
+    const fullName = user.user_metadata.full_name;
+    if (fullName.includes('@')) {
+      console.log('Email found in user.user_metadata.full_name:', fullName);
+      return fullName;
+    }
+  }
+  
+  // Try to decode JWT token
+  if (user.token && user.token.access_token) {
+    console.log('Attempting to decode JWT token...');
+    const decoded = decodeJWT(user.token.access_token);
+    if (decoded && decoded.email) {
+      console.log('Email found in JWT payload:', decoded.email);
+      return decoded.email;
+    }
+    if (decoded) {
+      console.log('JWT payload (no email):', decoded);
+    }
+  }
+  
+  // Try app_metadata.provider_id (sometimes has email info)
+  if (user.app_metadata && user.app_metadata.provider_id) {
+    console.log('Provider ID:', user.app_metadata.provider_id);
+  }
+  
+  console.warn('No email found in user object after checking all locations');
   return null;
 }
 
@@ -93,11 +163,17 @@ function isValidUserEmail(user) {
   const email = getUserEmail(user);
   
   if (!email) {
-    console.warn('No email found in user object:', user);
-    return false;
+    console.warn('Cannot validate email: no email found in user object');
+    return null; // Return null to indicate "unable to verify" rather than false (deny)
   }
   
-  return email.toLowerCase().endsWith(AUTH_CONFIG.allowedEmailDomain);
+  const lowerEmail = email.toLowerCase();
+  const isValid = lowerEmail.endsWith(AUTH_CONFIG.allowedEmailDomain);
+  
+  console.log('DETECTED EMAIL:', email);
+  console.log('Email validation result:', isValid);
+  
+  return isValid;
 }
 
 /**
@@ -111,11 +187,20 @@ function handleLogin(user) {
   
   if (!email) {
     console.error('No email found in user object');
-    handleUnauthorizedUser(user);
+    showErrorDialog('Unable to verify email. Please refresh or sign in again.');
     return;
   }
   
-  if (!isValidUserEmail(user)) {
+  const isValid = isValidUserEmail(user);
+  
+  if (isValid === null) {
+    // Unable to verify
+    console.error('Unable to verify email domain');
+    showErrorDialog('Unable to verify email. Please refresh or sign in again.');
+    return;
+  }
+  
+  if (!isValid) {
     handleUnauthorizedUser(user);
     return;
   }
@@ -244,14 +329,20 @@ function showErrorDialog(message) {
     border-radius: 8px;
     box-shadow: 0 18px 45px rgba(20,34,44,0.08);
     z-index: 10000;
-    max-width: 400px;
+    max-width: 450px;
     text-align: center;
     font-family: 'Raleway', system-ui, -apple-system, sans-serif;
   `;
   
+  // Check if this is a retry/email issue or access denied
+  const isRetryable = message.includes('Unable to verify') || message.includes('refresh');
+  const buttonText = isRetryable ? 'Try Again' : 'Try Another Account';
+  
   errorDiv.innerHTML = `
     <div style="font-size: 48px; margin-bottom: 16px;">⛔</div>
-    <h2 style="margin: 0 0 12px 0; color: #17212A; font-size: 1.25rem;">Access Denied</h2>
+    <h2 style="margin: 0 0 12px 0; color: #17212A; font-size: 1.25rem;">
+      ${isRetryable ? 'Verification Issue' : 'Access Denied'}
+    </h2>
     <p style="margin: 0 0 20px 0; color: #6E8592; font-size: 0.95rem;">${message}</p>
     <button onclick="this.parentElement.remove(); showLoginModal();" style="
       background: #5CA8B8;
@@ -261,7 +352,7 @@ function showErrorDialog(message) {
       border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
-    ">Try Another Account</button>
+    ">${buttonText}</button>
   `;
   
   document.body.appendChild(errorDiv);
