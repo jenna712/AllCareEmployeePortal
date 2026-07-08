@@ -303,17 +303,52 @@ function hidePortalContent() {
 }
 
 /**
- * Update signed-in email display in the sidebar
+ * Extract the user's first name from Netlify Identity user data
+ */
+function getUserFirstName(user) {
+  if (!user) return null;
+
+  const candidateSources = [
+    user?.user_metadata?.full_name,
+    user?.user_metadata?.name,
+    user?.name,
+    user?.email
+  ];
+
+  const rawValue = candidateSources
+    .find(value => typeof value === 'string' && value.trim().length > 0);
+
+  if (!rawValue) return null;
+
+  let firstName = rawValue.trim();
+
+  if (firstName.includes('@')) {
+    firstName = firstName.split('@')[0];
+  }
+
+  if (firstName.includes(' ')) {
+    firstName = firstName.split(/\s+/)[0];
+  }
+
+  firstName = firstName.replace(/[^A-Za-z'-]/g, '').trim();
+
+  if (!firstName) return null;
+  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+}
+
+/**
+ * Update logged-in greeting and header sign-out button
  */
 function updateSignedInEmail() {
-  const emailEl = document.getElementById('signedInEmail');
-  if (!emailEl) return;
+  const greetingEl = document.getElementById('greetingText');
+  const signOutBtn = document.getElementById('headerSignOut');
+  const user = getCurrentUser();
+  const firstName = getUserFirstName(user);
 
-  const user = netlifyIdentity.currentUser();
-  const email = getUserEmail(user) || 'Unknown user';
-  emailEl.textContent = `Signed in as: ${email}`;
+  if (greetingEl) {
+    greetingEl.textContent = firstName ? `Hello, ${firstName}` : 'Hello';
+  }
 
-  const signOutBtn = document.getElementById('sidebarSignOut');
   if (signOutBtn) {
     signOutBtn.removeEventListener('click', logoutUser);
     signOutBtn.addEventListener('click', logoutUser);
