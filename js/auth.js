@@ -36,8 +36,8 @@ function checkAuthStatus() {
   const user = netlifyIdentity.currentUser();
 
   if (!user) {
-    // User is not logged in
-    showLoginScreen();
+    // User is not logged in - show Netlify Identity modal
+    showLoginModal();
     return false;
   }
 
@@ -72,7 +72,6 @@ function handleLogin(user) {
 
   storeAuthUser(user);
   showPortalContent();
-  hideLoginScreen();
 }
 
 /**
@@ -80,7 +79,7 @@ function handleLogin(user) {
  */
 function handleLogout() {
   clearAuthUser();
-  showLoginScreen();
+  showLoginModal();
 }
 
 /**
@@ -89,7 +88,10 @@ function handleLogout() {
 function handleUnauthorizedUser(user) {
   console.warn(`Unauthorized user: ${user.email}`);
   netlifyIdentity.logout();
-  showUnauthorizedScreen(user.email);
+  
+  // Show error message
+  const errorMsg = `Access Denied: Your email (${user.email}) is not authorized. Only @allcaretherapygt.com emails can access this portal.`;
+  showErrorDialog(errorMsg);
 }
 
 /**
@@ -140,72 +142,72 @@ function getStoredAuthUser() {
 }
 
 /**
- * Show login screen and hide portal content
- */
-function showLoginScreen() {
-  const loginScreen = document.getElementById('netlify-login-screen');
-  const appContent = document.querySelector('.app');
-
-  if (loginScreen) {
-    loginScreen.classList.add('visible');
-  }
-  if (appContent) {
-    appContent.classList.add('hidden');
-  }
-}
-
-/**
- * Hide login screen and show portal content
- */
-function hideLoginScreen() {
-  const loginScreen = document.getElementById('netlify-login-screen');
-  const appContent = document.querySelector('.app');
-
-  if (loginScreen) {
-    loginScreen.classList.remove('visible');
-  }
-  if (appContent) {
-    appContent.classList.remove('hidden');
-  }
-}
-
-/**
  * Show portal content
  */
 function showPortalContent() {
   const appContent = document.querySelector('.app');
   if (appContent) {
-    appContent.classList.remove('hidden');
-    appContent.classList.add('visible');
+    appContent.style.display = 'flex';
   }
 }
 
 /**
- * Show unauthorized screen for invalid email domain
+ * Hide portal content
  */
-function showUnauthorizedScreen(email) {
-  const loginScreen = document.getElementById('netlify-login-screen');
-  if (loginScreen) {
-    loginScreen.classList.add('visible', 'unauthorized-state');
-    
-    const content = loginScreen.querySelector('.login-content');
-    if (content) {
-      content.innerHTML = `
-        <div class="unauthorized-message">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          <h2>Access Denied</h2>
-          <p>This portal is only available for All Care Therapy employees.</p>
-          <p class="email-notice">Your email: <strong>${email}</strong></p>
-          <p class="email-notice">Required domain: <strong>${AUTH_CONFIG.allowedEmailDomain}</strong></p>
-          <button class="btn btn-secondary" onclick="netlifyIdentity.logout()">Sign out</button>
-        </div>
-      `;
-    }
+function hidePortalContent() {
+  const appContent = document.querySelector('.app');
+  if (appContent) {
+    appContent.style.display = 'none';
   }
+}
+
+/**
+ * Show Netlify Identity login modal
+ */
+function showLoginModal() {
+  hidePortalContent();
+  if (typeof netlifyIdentity !== 'undefined') {
+    netlifyIdentity.open('login');
+  }
+}
+
+/**
+ * Show error dialog
+ */
+function showErrorDialog(message) {
+  // Create a simple error alert
+  const errorDiv = document.createElement('div');
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 32px;
+    border-radius: 8px;
+    box-shadow: 0 18px 45px rgba(20,34,44,0.08);
+    z-index: 10000;
+    max-width: 400px;
+    text-align: center;
+    font-family: 'Raleway', system-ui, -apple-system, sans-serif;
+  `;
+  
+  errorDiv.innerHTML = `
+    <div style="font-size: 48px; margin-bottom: 16px;">⛔</div>
+    <h2 style="margin: 0 0 12px 0; color: #17212A; font-size: 1.25rem;">Access Denied</h2>
+    <p style="margin: 0 0 20px 0; color: #6E8592; font-size: 0.95rem;">${message}</p>
+    <button onclick="this.parentElement.remove(); showLoginModal();" style="
+      background: #5CA8B8;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    ">Try Another Account</button>
+  `;
+  
+  document.body.appendChild(errorDiv);
 }
 
 /**
@@ -220,15 +222,6 @@ function logoutUser() {
  */
 function getCurrentUser() {
   return netlifyIdentity.currentUser() || getStoredAuthUser();
-}
-
-/**
- * Open Netlify Identity modal for login
- */
-function openLoginModal() {
-  if (typeof netlifyIdentity !== 'undefined') {
-    netlifyIdentity.open('login');
-  }
 }
 
 /**
