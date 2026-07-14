@@ -80,7 +80,7 @@ function renderQuickResources(list){
   const el = document.getElementById('quickResourcesGrid');
   if(!el) return;
   el.innerHTML = '';
-  // show up to 6 resources in defined order
+  // show the existing quick resources and append the new letterhead card
   list.slice(0,6).forEach(item=>{
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -89,6 +89,14 @@ function renderQuickResources(list){
     btn.innerHTML = '<span class="favorite-icon" aria-hidden="true">📄</span><span>'+item.title+'</span>';
     el.appendChild(btn);
   });
+
+  const letterheadBtn = document.createElement('button');
+  letterheadBtn.type = 'button';
+  letterheadBtn.className = 'favorite-card';
+  letterheadBtn.onclick = ()=> openExternal('https://docs.google.com/document/d/1ocWaXSi7PU0oDMaaBLDC5ssES3kWi_ZV39fCPHK5VB8/copy');
+  letterheadBtn.innerHTML = '<span class="favorite-icon" aria-hidden="true">📄</span><span class="favorite-card-content"><span class="favorite-card-title">Company Letterhead</span><span class="favorite-card-action">Create New Letter</span></span>';
+  letterheadBtn.setAttribute('aria-label', 'Company Letterhead. Create your own editable copy of the official All Care Therapies letterhead.');
+  el.appendChild(letterheadBtn);
 }
 
 function renderResourcesList(list){
